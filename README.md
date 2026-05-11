@@ -1,15 +1,24 @@
 # Veteriner Klinik Sistemi
 
-Veteriner Klinik Sistemi, Windows Forms ile gelistirilmis basit ve okunakli bir hasta takip uygulamasidir. Uygulama; kedi ve kopek hastalarinin kaydini tutar, hastaya veteriner atar, tedavi surecini baslatir ve tedavi gecmisini ekrandaki islem gunlugunde saklar.
+Windows Forms ile gelistirilmis modern bir veteriner klinik takip uygulamasi. Uygulama; kedi ve kopek hastalarinin kaydini tutar, hastaya veteriner atar, tedavi surecini baslatir, taburcu islemini yapar ve tedavi gecmisini islem akisi uzerinden takip eder.
+
+![Veteriner Klinik Paneli](docs/app-preview.png)
 
 ## Ozellikler
 
-- Yeni hasta kaydi: hayvan adi, sahip adi, yas, sikayet ve ture ozel bilgi girilir.
-- Tur secimi: kopek icin irk, kedi icin tuy tipi tutulur.
-- Veteriner atama: hazir veteriner listesinden secim yapilir.
-- Tedavi akisi: kayitli hasta once veterinere atanir, sonra tedavisi baslatilir ve taburcu edilir.
-- Tedavi gecmisi: her tedavi kaydi tarih, veteriner ve aciklama bilgisiyle listelenir.
-- Tek ekranli arayuz: kayit, hasta listesi, islem paneli ve islem gunlugu ayni formda bulunur.
+- Modern tek ekranli klinik paneli
+- Arka plan gorselli ve kart tabanli arayuz
+- Yeni hasta kaydi: hayvan adi, sahip adi, yas, sikayet ve ture ozel bilgi
+- Kopek icin irk, kedi icin tuy tipi girisi
+- Hasta listesinde kart gorunumu
+- Hasta, sahip, sikayet veya veteriner adina gore arama
+- Duruma gore filtreleme: kayitli, muayenede, tedavi edildi
+- Hazir veteriner listesinden atama
+- Tedaviyi baslatma ve taburcu etme akisi
+- Tedavi gecmisini islem gunlugune yazdirma
+- Hasta kaydi silme ve gunluk temizleme
+- Ust panelde toplam hasta, muayenede ve taburcu sayilari
+- Kucuk pencere yuksekliklerinde kaydirilabilir kayit paneli
 
 ## Kullanilan Teknolojiler
 
@@ -20,22 +29,28 @@ Veteriner Klinik Sistemi, Windows Forms ile gelistirilmis basit ve okunakli bir 
 
 ## OOP Tasarimi
 
-Projede ortak hasta davranislari `Hayvan` soyut sinifinda toplanir. `Kedi` ve `Kopek` siniflari bu siniftan tureyerek kendi tedavi aciklamalarini uretir. `ITedaviEdilebilir` arayuzu tedavi sozlesmesini belirtir. `Veteriner` ve `TedaviKaydi` siniflari hasta atama ve gecmis kaydi sorumluluklarini ayirir.
+Projede ortak hasta bilgileri ve tedavi sozlesmesi `Hayvan` soyut sinifinda toplanir. `Kedi` ve `Kopek` siniflari bu siniftan tureyerek kendi tedavi davranislarini uretir. `ITedaviEdilebilir` arayuzu tedavi operasyonunu tanimlar. `Veteriner` ve `TedaviKaydi` siniflari ise atama ve tedavi gecmisi sorumluluklarini ayirir.
 
 ## Proje Yapisi
 
 ```text
-Soru2_VeterinerSistemi/
-|-- Form1.cs                  # Ana Windows Forms arayuzu ve ekran akisi
-|-- Program.cs                # Uygulama baslangic noktasi
-|-- Hayvan.cs                 # Soyut hasta sinifi ve hasta durumu enum'u
-|-- Kedi.cs                   # Kediye ozel tedavi davranisi
-|-- Kopek.cs                  # Kopege ozel tedavi davranisi
-|-- Veteriner.cs              # Veteriner modeli
-|-- TedaviKaydi.cs            # Tedavi gecmisi modeli
-|-- ITedaviEdilebilir.cs      # Tedavi arayuzu
-|-- docs/PROJECT_PLAN.md      # Tasarim ve gelistirme plani
-`-- VeterinerSistemi.csproj   # .NET proje dosyasi
+VeterinerSistemi/
+|-- Assets/
+|   `-- clinic-background.png       # Form arka plan gorseli
+|-- docs/
+|   |-- PROJECT_PLAN.md             # Tasarim ve gelistirme plani
+|   `-- app-preview.png             # README ekran goruntusu
+|-- Form1.cs                        # Ana Windows Forms arayuzu ve ekran akisi
+|-- Form1.Designer.cs               # Form pencere ayarlari
+|-- Program.cs                      # Uygulama baslangic noktasi
+|-- Hayvan.cs                       # Soyut hasta sinifi ve hasta durumu enum'u
+|-- Kedi.cs                         # Kediye ozel tedavi davranisi
+|-- Kopek.cs                        # Kopege ozel tedavi davranisi
+|-- Veteriner.cs                    # Veteriner modeli
+|-- TedaviKaydi.cs                  # Tedavi gecmisi modeli
+|-- ITedaviEdilebilir.cs            # Tedavi arayuzu
+|-- VeterinerSistemi.csproj         # .NET proje dosyasi
+`-- VeterinerSistemi.sln            # Visual Studio cozum dosyasi
 ```
 
 ## Calistirma
@@ -52,11 +67,11 @@ dotnet run --project VeterinerSistemi.csproj
 
 1. Hasta turunu secin.
 2. Hasta ve sahip bilgilerini girip hastayi kaydedin.
-3. Listeden hastayi secin.
+3. Hasta panosundan hastayi secin.
 4. Veteriner atayin.
 5. Tedaviyi baslatin.
 6. Tedaviyi bitirerek hastayi taburcu edin.
-7. Gerektiginde tedavi gecmisini islem gunlugunde goruntuleyin.
+7. Gerektiginde tedavi gecmisini islem akisi alaninda goruntuleyin.
 
 ## Gelistirme Notlari
 

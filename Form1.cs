@@ -1,35 +1,42 @@
+using System.Drawing.Drawing2D;
+
 namespace VeterinerSistemi;
 
 public partial class Form1 : Form
 {
-    private static readonly Color AppBack = Color.FromArgb(238, 242, 247);
-    private static readonly Color Surface = Color.FromArgb(248, 252, 255);
-    private static readonly Color Primary = Color.FromArgb(27, 94, 98);
-    private static readonly Color PrimaryDark = Color.FromArgb(219, 238, 255);
-    private static readonly Color Accent = Color.FromArgb(231, 111, 81);
-    private static readonly Color Success = Color.FromArgb(46, 125, 50);
-    private static readonly Color Info = Color.FromArgb(37, 99, 235);
-    private static readonly Color Neutral = Color.FromArgb(82, 82, 91);
-    private static readonly Color TextMain = Color.FromArgb(31, 41, 55);
-    private static readonly Color MutedText = Color.FromArgb(91, 104, 124);
+    private static readonly Color Surface = Color.FromArgb(252, 254, 255);
+    private static readonly Color SurfaceSoft = Color.FromArgb(238, 247, 250);
+    private static readonly Color FieldBack = Color.FromArgb(248, 251, 252);
+    private static readonly Color Primary = Color.FromArgb(24, 112, 108);
+    private static readonly Color PrimarySoft = Color.FromArgb(218, 241, 238);
+    private static readonly Color Accent = Color.FromArgb(222, 104, 76);
+    private static readonly Color Success = Color.FromArgb(50, 140, 93);
+    private static readonly Color Warning = Color.FromArgb(210, 151, 54);
+    private static readonly Color Info = Color.FromArgb(48, 101, 185);
+    private static readonly Color Danger = Color.FromArgb(177, 66, 66);
+    private static readonly Color TextMain = Color.FromArgb(27, 39, 48);
+    private static readonly Color MutedText = Color.FromArgb(88, 103, 117);
+    private static readonly Color Line = Color.FromArgb(214, 226, 232);
 
     private readonly List<Hayvan> hayvanlar = new();
+    private readonly List<Hayvan> gorunenHayvanlar = new();
     private readonly List<Veteriner> veterinerler = new()
     {
         new Veteriner("Dr. Elif Yilmaz", "Kucuk Hayvan"),
         new Veteriner("Dr. Burak Demir", "Cerrahi"),
-        new Veteriner("Dr. Selin Aksoy", "Genel")
+        new Veteriner("Dr. Selin Aksoy", "Genel Kontrol"),
+        new Veteriner("Dr. Deniz Kaya", "Acil Bakim")
     };
 
     private RadioButton rbKopek = null!, rbKedi = null!;
     private TextBox tbAd = null!, tbSahip = null!, tbYas = null!, tbSikayet = null!, tbEkBilgi = null!;
-    private Label lblEkBilgi = null!;
-    private Button btnEkle = null!;
-    private Button btnAtaVeteriner = null!, btnTedaviBaslat = null!, btnTamamla = null!, btnGecmis = null!;
+    private TextBox tbAra = null!, tbLog = null!;
+    private ComboBox cbDurumFiltre = null!, cbVeteriner = null!;
+    private Label lblEkBilgi = null!, lblSecili = null!, lblBosListe = null!;
+    private Label lblToplam = null!, lblMuayenede = null!, lblTaburcu = null!;
+    private Button btnEkle = null!, btnTemizle = null!;
+    private Button btnAtaVeteriner = null!, btnTedaviBaslat = null!, btnTamamla = null!, btnGecmis = null!, btnSil = null!;
     private ListBox lbHayvanlar = null!;
-    private ComboBox cbVeteriner = null!;
-    private Label lblSecili = null!, lblOzet = null!;
-    private TextBox tbLog = null!;
     private Image? backgroundImage;
 
     public Form1()
@@ -37,6 +44,7 @@ public partial class Form1 : Form
         InitializeComponent();
         LoadBackgroundImage();
         BuildUi();
+        ListeyiYenile();
         UpdateActionState();
     }
 
@@ -52,215 +60,475 @@ public partial class Form1 : Form
 
     private void BuildUi()
     {
+        Controls.Clear();
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+
         var main = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             BackColor = Color.Transparent,
-            Padding = new Padding(18),
-            ColumnCount = 1,
+            Padding = new Padding(24),
+            ColumnCount = 3,
             RowCount = 3
         };
-        main.RowStyles.Add(new RowStyle(SizeType.Absolute, 86));
+
+        main.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 336));
+        main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 54));
+        main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 46));
+        main.RowStyles.Add(new RowStyle(SizeType.Absolute, 96));
         main.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        main.RowStyles.Add(new RowStyle(SizeType.Absolute, 220));
+        main.RowStyles.Add(new RowStyle(SizeType.Absolute, 188));
 
         var header = BuildHeader();
-        var content = BuildContent();
+        var intake = BuildIntakePanel();
+        var board = BuildPatientBoard();
+        var actions = BuildActionPanel();
         var log = BuildLogArea();
 
         main.Controls.Add(header, 0, 0);
-        main.Controls.Add(content, 0, 1);
+        main.SetColumnSpan(header, 3);
+        main.Controls.Add(intake, 0, 1);
+        main.Controls.Add(board, 1, 1);
+        main.Controls.Add(actions, 2, 1);
         main.Controls.Add(log, 0, 2);
+        main.SetColumnSpan(log, 3);
+
         Controls.Add(main);
     }
 
     private Control BuildHeader()
     {
-        var header = new Panel
+        var shell = CreateCard(new Padding(22, 16, 22, 16));
+        shell.Margin = new Padding(0, 0, 0, 14);
+
+        var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            BackColor = Surface,
-            Margin = new Padding(0, 0, 0, 12),
-            Padding = new Padding(18, 14, 18, 12)
+            ColumnCount = 2,
+            RowCount = 1,
+            BackColor = Color.Transparent
         };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 520));
+
+        var titlePanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            RowCount = 2,
+            ColumnCount = 1,
+            BackColor = Color.Transparent
+        };
+        titlePanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+        titlePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         var title = new Label
         {
-            Text = "Veteriner Klinik Sistemi",
-            Left = 18,
-            Top = 13,
-            AutoSize = true,
+            Text = "Veteriner Klinik Paneli",
+            Dock = DockStyle.Fill,
             ForeColor = Primary,
-            Font = new Font("Segoe UI Semibold", 18f, FontStyle.Bold)
+            Font = new Font("Segoe UI Semibold", 20f, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleLeft
         };
 
         var subtitle = new Label
         {
-            Text = "Hasta kaydi, veteriner atama ve tedavi gecmisi tek ekranda yonetilir.",
-            Left = 20,
-            Top = 50,
-            AutoSize = true,
+            Text = "Hasta kabulu, veteriner atama, muayene ve gecmis takibi tek ekranda.",
+            Dock = DockStyle.Fill,
             ForeColor = MutedText,
-            Font = new Font("Segoe UI", 9.5f)
+            Font = new Font("Segoe UI", 10f),
+            TextAlign = ContentAlignment.MiddleLeft
         };
 
-        lblOzet = new Label
-        {
-            Text = "0 hasta | 0 muayenede | 0 taburcu",
-            Anchor = AnchorStyles.Top | AnchorStyles.Right,
-            TextAlign = ContentAlignment.MiddleCenter,
-            BackColor = PrimaryDark,
-            ForeColor = Primary,
-            Font = new Font("Segoe UI Semibold", 10f, FontStyle.Bold),
-            Width = 270,
-            Height = 34,
-            Left = header.Width - 292,
-            Top = 24
-        };
-        lblOzet.Location = new Point(header.Width - lblOzet.Width - 18, 25);
-        header.Resize += (s, e) => lblOzet.Left = header.ClientSize.Width - lblOzet.Width - 18;
+        titlePanel.Controls.Add(title, 0, 0);
+        titlePanel.Controls.Add(subtitle, 0, 1);
 
-        header.Controls.AddRange(new Control[] { title, subtitle, lblOzet });
-        return header;
-    }
-
-    private Control BuildContent()
-    {
-        var content = new TableLayoutPanel
+        var stats = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            BackColor = Color.Transparent,
+            ColumnCount = 3,
+            RowCount = 1,
+            BackColor = Color.Transparent
+        };
+        stats.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+        stats.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+        stats.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.34f));
+
+        stats.Controls.Add(CreateMetric("Toplam Hasta", Primary, out lblToplam), 0, 0);
+        stats.Controls.Add(CreateMetric("Muayenede", Warning, out lblMuayenede), 1, 0);
+        stats.Controls.Add(CreateMetric("Taburcu", Success, out lblTaburcu), 2, 0);
+
+        layout.Controls.Add(titlePanel, 0, 0);
+        layout.Controls.Add(stats, 1, 0);
+        shell.Controls.Add(layout);
+        return shell;
+    }
+
+    private Control BuildIntakePanel()
+    {
+        var shell = CreateCard(new Padding(18));
+        shell.Margin = new Padding(0, 0, 14, 14);
+        shell.AutoScroll = true;
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1,
+            RowCount = 9,
+            BackColor = Color.Transparent
+        };
+
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        layout.Controls.Add(CreateSectionTitle("Yeni Hasta Kaydi", "Kabul formu"), 0, 0);
+
+        var speciesPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
             ColumnCount = 2,
             RowCount = 1,
-            Margin = new Padding(0)
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 8)
         };
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 372));
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        speciesPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        speciesPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
-        var kayit = BuildKayitGroup();
-        var right = new TableLayoutPanel
+        rbKopek = CreateSpeciesButton("Kopek", true);
+        rbKedi = CreateSpeciesButton("Kedi", false);
+        rbKopek.CheckedChanged += (s, e) => UpdateSpeciesUi();
+        rbKedi.CheckedChanged += (s, e) => UpdateSpeciesUi();
+
+        speciesPanel.Controls.Add(rbKopek, 0, 0);
+        speciesPanel.Controls.Add(rbKedi, 1, 0);
+        layout.Controls.Add(speciesPanel, 0, 1);
+
+        tbAd = CreateTextBox("Pamuk");
+        tbSahip = CreateTextBox("Ayse Yilmaz");
+        tbYas = CreateTextBox("3");
+        tbSikayet = CreateTextBox("Kontrol / asi / halsizlik");
+        tbEkBilgi = CreateTextBox("Golden, Husky...");
+
+        layout.Controls.Add(CreateField("Hayvan Adi", tbAd), 0, 2);
+        layout.Controls.Add(CreateField("Sahip Adi", tbSahip), 0, 3);
+        layout.Controls.Add(CreateField("Yas", tbYas), 0, 4);
+        layout.Controls.Add(CreateField("Sikayet", tbSikayet), 0, 5);
+
+        var ekPanel = CreateField("Irk", tbEkBilgi);
+        lblEkBilgi = (Label)ekPanel.Controls[0];
+        layout.Controls.Add(ekPanel, 0, 6);
+
+        var actionRow = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
             BackColor = Color.Transparent,
-            ColumnCount = 1,
-            RowCount = 2,
-            Margin = new Padding(12, 0, 0, 0)
+            Margin = new Padding(0, 6, 0, 0)
         };
-        right.RowStyles.Add(new RowStyle(SizeType.Percent, 52));
-        right.RowStyles.Add(new RowStyle(SizeType.Percent, 48));
-        right.Controls.Add(BuildListeGroup(), 0, 0);
-        right.Controls.Add(BuildIslemGroup(), 0, 1);
+        actionRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 66));
+        actionRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34));
 
-        content.Controls.Add(kayit, 0, 0);
-        content.Controls.Add(right, 1, 0);
-        return content;
-    }
-
-    private GroupBox BuildKayitGroup()
-    {
-        var grpKayit = CreateGroup("1. ADIM - Yeni Hasta Kaydi");
-        grpKayit.Margin = new Padding(0);
-
-        rbKopek = new RadioButton { Text = "Kopek", Left = 18, Top = 34, Checked = true, AutoSize = true };
-        rbKedi = new RadioButton { Text = "Kedi", Left = 132, Top = 34, AutoSize = true };
-        rbKopek.CheckedChanged += (s, e) =>
-        {
-            lblEkBilgi.Text = rbKopek.Checked ? "Irk:" : "Tuy Tipi:";
-            tbEkBilgi.PlaceholderText = rbKopek.Checked ? "Golden, Husky..." : "Kisa / Uzun";
-        };
-
-        tbAd = AddLabelledTextBox(grpKayit, "Hayvan Adi:", 78, "Pamuk");
-        tbSahip = AddLabelledTextBox(grpKayit, "Sahip Adi:", 116, "Ayse Yilmaz");
-        tbYas = AddLabelledTextBox(grpKayit, "Yas:", 154, "3");
-        tbSikayet = AddLabelledTextBox(grpKayit, "Sikayet:", 192, "Kontrol / asi / halsizlik");
-
-        lblEkBilgi = new Label { Text = "Irk:", Left = 18, Top = 235, Width = 112, Font = new Font("Segoe UI Semibold", 9f, FontStyle.Bold), ForeColor = TextMain };
-        tbEkBilgi = new TextBox { Left = 138, Top = 231, Width = 205, Height = 26, PlaceholderText = "Golden, Husky..." };
-
-        btnEkle = CreateButton("+  Hastayi Kaydet", Success, 18, 292, 325, 42);
+        btnEkle = CreateButton("Hastayi Kaydet", Success);
         btnEkle.Click += BtnEkle_Click;
+        btnTemizle = CreateButton("Temizle", Color.FromArgb(93, 107, 121));
+        btnTemizle.Click += (s, e) => TemizleAlanlar();
 
-        grpKayit.Controls.AddRange(new Control[] { rbKopek, rbKedi, lblEkBilgi, tbEkBilgi, btnEkle });
-        return grpKayit;
+        actionRow.Controls.Add(btnEkle, 0, 0);
+        actionRow.Controls.Add(btnTemizle, 1, 0);
+        layout.Controls.Add(actionRow, 0, 7);
+
+        var note = new Label
+        {
+            Dock = DockStyle.Top,
+            Height = 42,
+            Text = "Zorunlu alanlar: hayvan adi, sahip adi ve gecerli yas.",
+            ForeColor = MutedText,
+            Font = new Font("Segoe UI", 9f),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(2, 8, 2, 0)
+        };
+        layout.Controls.Add(note, 0, 8);
+
+        shell.Controls.Add(layout);
+        UpdateSpeciesUi();
+        return shell;
     }
 
-    private GroupBox BuildListeGroup()
+    private Control BuildPatientBoard()
     {
-        var grpListe = CreateGroup("2. ADIM - Islem Yapilacak Hastayi Secin");
-        grpListe.Margin = new Padding(0, 0, 0, 10);
+        var shell = CreateCard(new Padding(18));
+        shell.Margin = new Padding(0, 0, 14, 14);
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            BackColor = Color.Transparent
+        };
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        layout.Controls.Add(CreateSectionTitle("Hasta Panosu", "Kayitlar ve filtreler"), 0, 0);
+
+        var filters = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 8)
+        };
+        filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
+        filters.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
+
+        tbAra = CreateTextBox("Hasta, sahip veya sikayet ara");
+        tbAra.TextChanged += (s, e) => ListeyiYenile(SeciliHayvanSilently());
+
+        cbDurumFiltre = new ComboBox
+        {
+            Dock = DockStyle.Fill,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = FieldBack,
+            ForeColor = TextMain,
+            Font = new Font("Segoe UI", 9.5f),
+            IntegralHeight = false,
+            Margin = new Padding(8, 0, 0, 0)
+        };
+        cbDurumFiltre.Items.AddRange(new object[] { "Tum Durumlar", "Kayitli", "Muayenede", "Tedavi Edildi" });
+        cbDurumFiltre.SelectedIndex = 0;
+        cbDurumFiltre.SelectedIndexChanged += (s, e) => ListeyiYenile(SeciliHayvanSilently());
+
+        filters.Controls.Add(tbAra, 0, 0);
+        filters.Controls.Add(cbDurumFiltre, 1, 0);
+        layout.Controls.Add(filters, 0, 1);
+
+        var listShell = new RoundedPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = FieldBack,
+            BorderColor = Line,
+            BorderThickness = 1,
+            CornerRadius = 14,
+            Padding = new Padding(10)
+        };
 
         lbHayvanlar = new ListBox
         {
             Dock = DockStyle.Fill,
-            BorderStyle = BorderStyle.FixedSingle,
-            Font = new Font("Consolas", 9f),
-            BackColor = Color.FromArgb(250, 252, 255),
+            BorderStyle = BorderStyle.None,
+            BackColor = FieldBack,
             ForeColor = TextMain,
-            IntegralHeight = false
+            DrawMode = DrawMode.OwnerDrawVariable,
+            IntegralHeight = false,
+            ItemHeight = 84
         };
+        lbHayvanlar.MeasureItem += (s, e) => e.ItemHeight = 84;
+        lbHayvanlar.DrawItem += DrawPatientItem;
         lbHayvanlar.SelectedIndexChanged += (s, e) =>
         {
             SeciliBilgiyiGuncelle();
             UpdateActionState();
         };
 
-        var listShell = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12, 24, 12, 12), BackColor = Surface };
+        lblBosListe = new Label
+        {
+            Dock = DockStyle.Fill,
+            Text = "Henuz hasta kaydi yok.",
+            ForeColor = MutedText,
+            Font = new Font("Segoe UI Semibold", 10f, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleCenter,
+            Visible = false
+        };
+
         listShell.Controls.Add(lbHayvanlar);
-        grpListe.Controls.Add(listShell);
-        return grpListe;
+        listShell.Controls.Add(lblBosListe);
+        layout.Controls.Add(listShell, 0, 2);
+
+        shell.Controls.Add(layout);
+        return shell;
     }
 
-    private GroupBox BuildIslemGroup()
+    private Control BuildActionPanel()
     {
-        var grpIslem = CreateGroup("3. ADIM - Secili Hasta Islemleri");
-        grpIslem.Margin = new Padding(0);
+        var shell = CreateCard(new Padding(18));
+        shell.Margin = new Padding(0, 0, 0, 14);
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 5,
+            BackColor = Color.Transparent
+        };
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 54));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 128));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 86));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 112));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        layout.Controls.Add(CreateSectionTitle("Hasta Islemleri", "Atama ve tedavi"), 0, 0);
+
+        var selectedCard = new RoundedPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = SurfaceSoft,
+            BorderColor = Line,
+            BorderThickness = 1,
+            CornerRadius = 14,
+            Padding = new Padding(14),
+            Margin = new Padding(0, 0, 0, 12)
+        };
 
         lblSecili = new Label
         {
-            Text = "Secili hasta: (yok)",
-            Left = 18,
-            Top = 34,
-            Width = 620,
-            Height = 24,
-            Font = new Font("Segoe UI", 9f, FontStyle.Italic),
-            ForeColor = MutedText
+            Dock = DockStyle.Fill,
+            Text = "Listeden bir hasta sectiginizde detaylar burada gorunur.",
+            ForeColor = MutedText,
+            Font = new Font("Segoe UI", 9.5f),
+            TextAlign = ContentAlignment.MiddleLeft
+        };
+        selectedCard.Controls.Add(lblSecili);
+        layout.Controls.Add(selectedCard, 0, 1);
+
+        var vetPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 2,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 12)
+        };
+        vetPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 62));
+        vetPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 38));
+        vetPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+        vetPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        var lblVet = new Label
+        {
+            Text = "Veteriner secimi",
+            Dock = DockStyle.Fill,
+            ForeColor = TextMain,
+            Font = new Font("Segoe UI Semibold", 9f, FontStyle.Bold)
         };
 
-        var lblVet = new Label { Text = "Veteriner:", Left = 18, Top = 72, Width = 76, ForeColor = TextMain };
         cbVeteriner = new ComboBox
         {
-            Left = 96,
-            Top = 68,
-            Width = 235,
-            DropDownStyle = ComboBoxStyle.DropDownList
+            Dock = DockStyle.Fill,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = FieldBack,
+            ForeColor = TextMain,
+            Font = new Font("Segoe UI", 9.5f),
+            IntegralHeight = false
         };
         cbVeteriner.Items.AddRange(veterinerler.Cast<object>().ToArray());
         cbVeteriner.SelectedIndex = 0;
 
-        btnAtaVeteriner = CreateButton("Veteriner Ata", Info, 342, 66, 140, 31);
+        btnAtaVeteriner = CreateButton("Ata", Info);
+        btnAtaVeteriner.Margin = new Padding(8, 0, 0, 0);
         btnAtaVeteriner.Click += BtnAta_Click;
 
-        btnTedaviBaslat = CreateButton("Tedaviyi Baslat", Accent, 18, 118, 190, 42);
+        vetPanel.Controls.Add(lblVet, 0, 0);
+        vetPanel.SetColumnSpan(lblVet, 2);
+        vetPanel.Controls.Add(cbVeteriner, 0, 1);
+        vetPanel.Controls.Add(btnAtaVeteriner, 1, 1);
+        layout.Controls.Add(vetPanel, 0, 2);
+
+        var actionGrid = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 2,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 10)
+        };
+        actionGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        actionGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        actionGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        actionGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+
+        btnTedaviBaslat = CreateButton("Tedaviyi Baslat", Accent);
         btnTedaviBaslat.Click += BtnTedaviBaslat_Click;
-
-        btnTamamla = CreateButton("Tedavi Bitti", Success, 216, 118, 190, 42);
+        btnTamamla = CreateButton("Taburcu Et", Success);
         btnTamamla.Click += BtnTamamla_Click;
-
-        btnGecmis = CreateButton("Tedavi Gecmisi", Neutral, 414, 118, 190, 42);
+        btnGecmis = CreateButton("Gecmisi Yaz", Color.FromArgb(93, 107, 121));
         btnGecmis.Click += BtnGecmis_Click;
+        btnSil = CreateButton("Kaydi Sil", Danger);
+        btnSil.Click += BtnSil_Click;
 
-        grpIslem.Controls.AddRange(new Control[] {
-            lblSecili, lblVet, cbVeteriner, btnAtaVeteriner,
-            btnTedaviBaslat, btnTamamla, btnGecmis
-        });
+        actionGrid.Controls.Add(btnTedaviBaslat, 0, 0);
+        actionGrid.Controls.Add(btnTamamla, 1, 0);
+        actionGrid.Controls.Add(btnGecmis, 0, 1);
+        actionGrid.Controls.Add(btnSil, 1, 1);
+        layout.Controls.Add(actionGrid, 0, 3);
 
-        return grpIslem;
+        var tip = new Label
+        {
+            Dock = DockStyle.Top,
+            Height = 52,
+            Text = "Tedavi baslatmak icin once secili hastaya veteriner atanmalidir.",
+            ForeColor = MutedText,
+            Font = new Font("Segoe UI", 9f),
+            TextAlign = ContentAlignment.TopLeft,
+            Padding = new Padding(2, 8, 2, 0)
+        };
+        layout.Controls.Add(tip, 0, 4);
+
+        shell.Controls.Add(layout);
+        return shell;
     }
 
-    private GroupBox BuildLogArea()
+    private Control BuildLogArea()
     {
-        var grpLog = CreateGroup("Islem Gunlugu");
-        grpLog.Margin = new Padding(0, 14, 0, 0);
+        var shell = CreateCard(new Padding(18, 14, 18, 18));
+        shell.Margin = new Padding(0);
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            BackColor = Color.Transparent
+        };
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        var header = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            BackColor = Color.Transparent
+        };
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
+
+        var title = new Label
+        {
+            Text = "Islem Akisi",
+            Dock = DockStyle.Fill,
+            ForeColor = TextMain,
+            Font = new Font("Segoe UI Semibold", 11f, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleLeft
+        };
+
+        var clear = CreateButton("Gunlugu Sil", Color.FromArgb(93, 107, 121));
+        clear.Font = new Font("Segoe UI Semibold", 8.5f, FontStyle.Bold);
+        clear.Click += (s, e) => tbLog.Clear();
+
+        header.Controls.Add(title, 0, 0);
+        header.Controls.Add(clear, 1, 0);
+        layout.Controls.Add(header, 0, 0);
 
         tbLog = new TextBox
         {
@@ -270,71 +538,183 @@ public partial class Form1 : Form
             ReadOnly = true,
             BorderStyle = BorderStyle.FixedSingle,
             Font = new Font("Consolas", 9f),
-            BackColor = Color.FromArgb(250, 252, 255),
+            BackColor = FieldBack,
             ForeColor = TextMain
         };
+        layout.Controls.Add(tbLog, 0, 1);
 
-        var logShell = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12, 24, 12, 12), BackColor = Surface };
-        logShell.Controls.Add(tbLog);
-        grpLog.Controls.Add(logShell);
-        return grpLog;
+        shell.Controls.Add(layout);
+        return shell;
     }
 
-    private GroupBox CreateGroup(string text)
+    private RoundedPanel CreateCard(Padding padding)
     {
-        return new GroupBox
+        return new RoundedPanel
         {
-            Text = text,
             Dock = DockStyle.Fill,
             BackColor = Surface,
-            ForeColor = TextMain,
-            Font = new Font("Segoe UI Semibold", 9f, FontStyle.Bold),
-            Padding = new Padding(10)
+            BorderColor = Color.FromArgb(224, 235, 240),
+            BorderThickness = 1,
+            CornerRadius = 20,
+            Padding = padding
         };
     }
 
-    private Button CreateButton(string text, Color color, int left, int top, int width, int height)
+    private Control CreateMetric(string caption, Color color, out Label valueLabel)
+    {
+        var metric = new RoundedPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(247, 251, 252),
+            BorderColor = Color.FromArgb(222, 234, 238),
+            BorderThickness = 1,
+            CornerRadius = 15,
+            Padding = new Padding(12, 8, 12, 8),
+            Margin = new Padding(8, 0, 0, 0)
+        };
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            RowCount = 2,
+            ColumnCount = 1,
+            BackColor = Color.Transparent
+        };
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
+
+        valueLabel = new Label
+        {
+            Text = "0",
+            Dock = DockStyle.Fill,
+            ForeColor = color,
+            Font = new Font("Segoe UI Semibold", 18f, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleLeft
+        };
+
+        var captionLabel = new Label
+        {
+            Text = caption,
+            Dock = DockStyle.Fill,
+            ForeColor = MutedText,
+            Font = new Font("Segoe UI", 8.5f),
+            TextAlign = ContentAlignment.MiddleLeft
+        };
+
+        layout.Controls.Add(valueLabel, 0, 0);
+        layout.Controls.Add(captionLabel, 0, 1);
+        metric.Controls.Add(layout);
+        return metric;
+    }
+
+    private Control CreateSectionTitle(string title, string caption)
+    {
+        var panel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 8)
+        };
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 60));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 40));
+
+        panel.Controls.Add(new Label
+        {
+            Text = title,
+            Dock = DockStyle.Fill,
+            ForeColor = TextMain,
+            Font = new Font("Segoe UI Semibold", 13f, FontStyle.Bold),
+            TextAlign = ContentAlignment.BottomLeft
+        }, 0, 0);
+
+        panel.Controls.Add(new Label
+        {
+            Text = caption,
+            Dock = DockStyle.Fill,
+            ForeColor = MutedText,
+            Font = new Font("Segoe UI", 8.8f),
+            TextAlign = ContentAlignment.TopLeft
+        }, 0, 1);
+
+        return panel;
+    }
+
+    private RadioButton CreateSpeciesButton(string text, bool isChecked)
+    {
+        var radio = new RadioButton
+        {
+            Text = text,
+            Checked = isChecked,
+            Dock = DockStyle.Fill,
+            Appearance = Appearance.Button,
+            FlatStyle = FlatStyle.Flat,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Font = new Font("Segoe UI Semibold", 9.5f, FontStyle.Bold),
+            Cursor = Cursors.Hand,
+            Margin = text == "Kopek" ? new Padding(0, 0, 6, 0) : new Padding(6, 0, 0, 0)
+        };
+        radio.FlatAppearance.BorderSize = 1;
+        return radio;
+    }
+
+    private TextBox CreateTextBox(string placeholder)
+    {
+        return new TextBox
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.FixedSingle,
+            BackColor = FieldBack,
+            ForeColor = TextMain,
+            Font = new Font("Segoe UI", 9.5f),
+            PlaceholderText = placeholder,
+            Margin = new Padding(0)
+        };
+    }
+
+    private Control CreateField(string label, TextBox textBox)
+    {
+        var panel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2,
+            BackColor = Color.Transparent,
+            Margin = new Padding(0, 0, 0, 8)
+        };
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        panel.Controls.Add(new Label
+        {
+            Text = label,
+            Dock = DockStyle.Fill,
+            Font = new Font("Segoe UI Semibold", 9f, FontStyle.Bold),
+            ForeColor = TextMain,
+            TextAlign = ContentAlignment.MiddleLeft
+        }, 0, 0);
+        panel.Controls.Add(textBox, 0, 1);
+        return panel;
+    }
+
+    private Button CreateButton(string text, Color color)
     {
         var button = new Button
         {
             Text = text,
-            Left = left,
-            Top = top,
-            Width = width,
-            Height = height,
+            Dock = DockStyle.Fill,
             BackColor = color,
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
-            Font = new Font("Segoe UI Semibold", 9.5f, FontStyle.Bold),
-            Cursor = Cursors.Hand
+            Font = new Font("Segoe UI Semibold", 9.3f, FontStyle.Bold),
+            Cursor = Cursors.Hand,
+            Margin = new Padding(4)
         };
         button.FlatAppearance.BorderSize = 0;
         button.FlatAppearance.MouseOverBackColor = ControlPaint.Light(color, 0.08f);
+        button.FlatAppearance.MouseDownBackColor = ControlPaint.Dark(color, 0.08f);
         return button;
-    }
-
-    private TextBox AddLabelledTextBox(Control parent, string label, int top, string placeholder)
-    {
-        var lbl = new Label
-        {
-            Text = label,
-            Left = 18,
-            Top = top + 4,
-            Width = 112,
-            Font = new Font("Segoe UI Semibold", 9f, FontStyle.Bold),
-            ForeColor = TextMain
-        };
-        var tb = new TextBox
-        {
-            Left = 138,
-            Top = top,
-            Width = 205,
-            Height = 26,
-            PlaceholderText = placeholder
-        };
-        parent.Controls.Add(lbl);
-        parent.Controls.Add(tb);
-        return tb;
     }
 
     private void LoadBackgroundImage()
@@ -346,6 +726,26 @@ public partial class Form1 : Form
         backgroundImage = Image.FromFile(imagePath);
         BackgroundImage = backgroundImage;
         BackgroundImageLayout = ImageLayout.Stretch;
+    }
+
+    private void UpdateSpeciesUi()
+    {
+        if (rbKopek == null || rbKedi == null || lblEkBilgi == null || tbEkBilgi == null)
+            return;
+
+        lblEkBilgi.Text = rbKopek.Checked ? "Irk" : "Tuy Tipi";
+        tbEkBilgi.PlaceholderText = rbKopek.Checked ? "Golden, Husky..." : "Kisa / Uzun";
+        StyleSpeciesButton(rbKopek);
+        StyleSpeciesButton(rbKedi);
+    }
+
+    private void StyleSpeciesButton(RadioButton radio)
+    {
+        radio.BackColor = radio.Checked ? Primary : Color.White;
+        radio.ForeColor = radio.Checked ? Color.White : Primary;
+        radio.FlatAppearance.BorderColor = radio.Checked ? Primary : Line;
+        radio.FlatAppearance.CheckedBackColor = Primary;
+        radio.FlatAppearance.MouseOverBackColor = radio.Checked ? ControlPaint.Light(Primary, 0.08f) : PrimarySoft;
     }
 
     private void BtnEkle_Click(object? sender, EventArgs e)
@@ -363,8 +763,8 @@ public partial class Form1 : Form
                 : new Kedi(tbAd.Text.Trim(), tbSahip.Text.Trim(), yas, tbSikayet.Text.Trim(), tbEkBilgi.Text.Trim());
 
             hayvanlar.Add(h);
-            ListeyiYenile(hayvanlar.Count - 1);
-            Log($"[KAYIT] {h}");
+            ListeyiYenile(h);
+            Log($"[KAYIT] {h.Ad} sisteme eklendi.");
             TemizleAlanlar();
         }
         catch (Exception ex)
@@ -381,7 +781,7 @@ public partial class Form1 : Form
         var vet = (Veteriner)cbVeteriner.SelectedItem!;
         h.AtananVeteriner = vet;
         Log($"[ATAMA] {h.Ad} -> {vet}");
-        ListeyiYenile(lbHayvanlar.SelectedIndex);
+        ListeyiYenile(h);
     }
 
     private void BtnTedaviBaslat_Click(object? sender, EventArgs e)
@@ -398,8 +798,8 @@ public partial class Form1 : Form
         h.Durum = HastaDurumu.MuayeneEdiliyor;
         string sonuc = h.Tedavi();
         h.TedaviGecmisi.Add(new TedaviKaydi(h.AtananVeteriner, sonuc));
-        Log($"[MUAYENEDE] {h.Ad} -> {sonuc}");
-        ListeyiYenile(lbHayvanlar.SelectedIndex);
+        Log($"[MUAYENE] {h.Ad} icin tedavi baslatildi.");
+        ListeyiYenile(h);
     }
 
     private void BtnTamamla_Click(object? sender, EventArgs e)
@@ -415,7 +815,7 @@ public partial class Form1 : Form
 
         h.Durum = HastaDurumu.TedaviEdildi;
         Log($"[TABURCU] {h.Ad} tedavi edildi.");
-        ListeyiYenile(lbHayvanlar.SelectedIndex);
+        ListeyiYenile(h);
     }
 
     private void BtnGecmis_Click(object? sender, EventArgs e)
@@ -425,10 +825,24 @@ public partial class Form1 : Form
 
         Log($"--- {h.Ad} tedavi gecmisi ---");
         if (h.TedaviGecmisi.Count == 0)
-            Log("    (kayit yok)");
+            Log("    kayit yok");
         else
             foreach (var k in h.TedaviGecmisi)
                 Log("    " + k);
+    }
+
+    private void BtnSil_Click(object? sender, EventArgs e)
+    {
+        var h = SeciliHayvan();
+        if (h == null) return;
+
+        var result = MessageBox.Show($"{h.Ad} kaydi silinsin mi?", "Kaydi Sil", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+        if (result != DialogResult.Yes)
+            return;
+
+        hayvanlar.Remove(h);
+        Log($"[SILINDI] {h.Ad} kaydi kaldirildi.");
+        ListeyiYenile();
     }
 
     private Hayvan? SeciliHayvan()
@@ -443,54 +857,114 @@ public partial class Form1 : Form
 
     private Hayvan? SeciliHayvanSilently()
     {
-        if (lbHayvanlar.SelectedIndex < 0 || lbHayvanlar.SelectedIndex >= hayvanlar.Count)
-            return null;
-
-        return hayvanlar[lbHayvanlar.SelectedIndex];
+        return lbHayvanlar?.SelectedItem as Hayvan;
     }
 
     private void SeciliBilgiyiGuncelle()
     {
+        if (lblSecili == null)
+            return;
+
         var h = SeciliHayvanSilently();
         if (h == null)
         {
-            lblSecili.Text = "Secili hasta: (yok)";
+            lblSecili.Text = "Listeden bir hasta sectiginizde detaylar burada gorunur.";
+            lblSecili.ForeColor = MutedText;
             return;
         }
 
-        string atanan = h.AtananVeteriner != null ? h.AtananVeteriner.Ad : "Atanmadi";
-        lblSecili.Text = $"Secili: [{h.Ad}] {h.SahipAdi} - {h.Sikayet} | Durum: {h.Durum} | Veteriner: {atanan}";
+        var tur = h is Kopek ? "Kopek" : "Kedi";
+        var vet = h.AtananVeteriner != null ? h.AtananVeteriner.ToString() : "Atanmadi";
+        lblSecili.ForeColor = TextMain;
+        lblSecili.Text =
+            $"{tur}: {h.Ad}\r\n" +
+            $"Sahip: {h.SahipAdi} | Yas: {h.Yas}\r\n" +
+            $"Sikayet: {EmptyToDash(h.Sikayet)}\r\n" +
+            $"Durum: {StatusText(h.Durum)} | Veteriner: {vet}";
+
+        if (h.AtananVeteriner != null)
+            cbVeteriner.SelectedItem = h.AtananVeteriner;
     }
 
-    private void ListeyiYenile(int? secim = null)
+    private void ListeyiYenile(Hayvan? secim = null)
     {
-        int sec = secim ?? lbHayvanlar.SelectedIndex;
+        if (lbHayvanlar == null)
+            return;
+
+        secim ??= SeciliHayvanSilently();
+        gorunenHayvanlar.Clear();
+        lbHayvanlar.BeginUpdate();
         lbHayvanlar.Items.Clear();
 
-        foreach (var h in hayvanlar)
+        foreach (var h in hayvanlar.Where(MatchesFilter))
         {
-            string atanan = h.AtananVeteriner != null ? $" | Vet: {h.AtananVeteriner.Ad}" : "";
-            lbHayvanlar.Items.Add(h + atanan);
+            gorunenHayvanlar.Add(h);
+            lbHayvanlar.Items.Add(h);
         }
 
-        if (sec >= 0 && sec < lbHayvanlar.Items.Count)
-            lbHayvanlar.SelectedIndex = sec;
+        lbHayvanlar.EndUpdate();
 
+        if (secim != null && gorunenHayvanlar.Contains(secim))
+            lbHayvanlar.SelectedItem = secim;
+        else if (lbHayvanlar.Items.Count > 0 && secim == null)
+            lbHayvanlar.SelectedIndex = 0;
+
+        UpdateEmptyState();
         SeciliBilgiyiGuncelle();
         UpdateSummary();
         UpdateActionState();
+        lbHayvanlar.Invalidate();
+    }
+
+    private bool MatchesFilter(Hayvan h)
+    {
+        var search = tbAra?.Text.Trim();
+        bool searchOk = string.IsNullOrWhiteSpace(search)
+            || h.Ad.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || h.SahipAdi.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || h.Sikayet.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || (h.AtananVeteriner?.Ad.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        bool statusOk = cbDurumFiltre?.SelectedIndex switch
+        {
+            1 => h.Durum == HastaDurumu.Kayitli,
+            2 => h.Durum == HastaDurumu.MuayeneEdiliyor,
+            3 => h.Durum == HastaDurumu.TedaviEdildi,
+            _ => true
+        };
+
+        return searchOk && statusOk;
+    }
+
+    private void UpdateEmptyState()
+    {
+        if (lblBosListe == null)
+            return;
+
+        bool empty = lbHayvanlar.Items.Count == 0;
+        lblBosListe.Text = hayvanlar.Count == 0 ? "Henuz hasta kaydi yok." : "Filtreye uyan hasta bulunamadi.";
+        lblBosListe.Visible = empty;
+        lbHayvanlar.Visible = !empty;
+        if (empty)
+            lblBosListe.BringToFront();
     }
 
     private void UpdateSummary()
     {
+        if (lblToplam == null)
+            return;
+
         int muayenede = hayvanlar.Count(h => h.Durum == HastaDurumu.MuayeneEdiliyor);
         int taburcu = hayvanlar.Count(h => h.Durum == HastaDurumu.TedaviEdildi);
-        lblOzet.Text = $"{hayvanlar.Count} hasta | {muayenede} muayenede | {taburcu} taburcu";
+        lblToplam.Text = hayvanlar.Count.ToString();
+        lblMuayenede.Text = muayenede.ToString();
+        lblTaburcu.Text = taburcu.ToString();
     }
 
     private void UpdateActionState()
     {
-        if (btnAtaVeteriner == null) return;
+        if (btnAtaVeteriner == null)
+            return;
 
         var h = SeciliHayvanSilently();
         bool secili = h != null;
@@ -498,6 +972,7 @@ public partial class Form1 : Form
         btnTedaviBaslat.Enabled = secili && h!.AtananVeteriner != null && h.Durum != HastaDurumu.TedaviEdildi;
         btnTamamla.Enabled = secili && h!.Durum == HastaDurumu.MuayeneEdiliyor;
         btnGecmis.Enabled = secili;
+        btnSil.Enabled = secili;
     }
 
     private void TemizleAlanlar()
@@ -507,9 +982,163 @@ public partial class Form1 : Form
         tbYas.Clear();
         tbSikayet.Clear();
         tbEkBilgi.Clear();
+        rbKopek.Checked = true;
         tbAd.Focus();
     }
 
     private void Log(string msg)
-        => tbLog.AppendText(msg + Environment.NewLine);
+        => tbLog.AppendText($"{DateTime.Now:HH:mm}  {msg}{Environment.NewLine}");
+
+    private static string EmptyToDash(string value)
+        => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    private static string StatusText(HastaDurumu durum)
+    {
+        return durum switch
+        {
+            HastaDurumu.Kayitli => "Kayitli",
+            HastaDurumu.MuayeneEdiliyor => "Muayenede",
+            HastaDurumu.TedaviEdildi => "Tedavi Edildi",
+            _ => durum.ToString()
+        };
+    }
+
+    private static Color StatusColor(HastaDurumu durum)
+    {
+        return durum switch
+        {
+            HastaDurumu.Kayitli => Info,
+            HastaDurumu.MuayeneEdiliyor => Warning,
+            HastaDurumu.TedaviEdildi => Success,
+            _ => MutedText
+        };
+    }
+
+    private void DrawPatientItem(object? sender, DrawItemEventArgs e)
+    {
+        if (e.Index < 0 || e.Index >= lbHayvanlar.Items.Count)
+            return;
+
+        var h = (Hayvan)lbHayvanlar.Items[e.Index];
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        bool selected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
+        var card = new Rectangle(e.Bounds.X + 6, e.Bounds.Y + 5, e.Bounds.Width - 12, e.Bounds.Height - 10);
+        FillRoundRectangle(g, selected ? Color.FromArgb(220, 241, 238) : Color.White, card, 14);
+        DrawRoundRectangle(g, selected ? Primary : Line, card, 14);
+
+        using var titleFont = new Font("Segoe UI Semibold", 10.2f, FontStyle.Bold);
+        using var metaFont = new Font("Segoe UI", 8.8f);
+        using var smallFont = new Font("Segoe UI Semibold", 8.2f, FontStyle.Bold);
+
+        var titleRect = new Rectangle(card.Left + 14, card.Top + 10, card.Width - 162, 24);
+        var metaRect = new Rectangle(card.Left + 14, card.Top + 35, card.Width - 28, 22);
+        var subRect = new Rectangle(card.Left + 14, card.Top + 56, card.Width - 28, 18);
+        var badgeRect = new Rectangle(card.Right - 128, card.Top + 13, 108, 25);
+
+        string tur = h is Kopek ? "Kopek" : "Kedi";
+        TextRenderer.DrawText(g, $"{h.Ad} - {h.SahipAdi}", titleFont, titleRect, TextMain, TextFormatFlags.EndEllipsis);
+        TextRenderer.DrawText(g, $"{tur} | {h.Yas} yas | {EmptyToDash(h.Sikayet)}", metaFont, metaRect, MutedText, TextFormatFlags.EndEllipsis);
+
+        var vet = h.AtananVeteriner != null ? h.AtananVeteriner.Ad : "Veteriner atanmadi";
+        TextRenderer.DrawText(g, vet, smallFont, subRect, h.AtananVeteriner != null ? Primary : MutedText, TextFormatFlags.EndEllipsis);
+
+        DrawBadge(g, badgeRect, StatusText(h.Durum), StatusColor(h.Durum), smallFont);
+    }
+
+    private static void DrawBadge(Graphics g, Rectangle rect, string text, Color color, Font font)
+    {
+        FillRoundRectangle(g, Color.FromArgb(235, color), rect, 12);
+        TextRenderer.DrawText(g, text, font, rect, color, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+    }
+
+    private static void FillRoundRectangle(Graphics g, Color color, Rectangle rect, int radius)
+    {
+        using var path = CreateRoundPath(rect, radius);
+        using var brush = new SolidBrush(color);
+        g.FillPath(brush, path);
+    }
+
+    private static void DrawRoundRectangle(Graphics g, Color color, Rectangle rect, int radius)
+    {
+        using var path = CreateRoundPath(rect, radius);
+        using var pen = new Pen(color);
+        g.DrawPath(pen, path);
+    }
+
+    private static GraphicsPath CreateRoundPath(Rectangle rect, int radius)
+    {
+        var path = new GraphicsPath();
+        int diameter = Math.Min(radius * 2, Math.Min(rect.Width, rect.Height));
+        var arc = new Rectangle(rect.Location, new Size(diameter, diameter));
+
+        path.AddArc(arc, 180, 90);
+        arc.X = rect.Right - diameter;
+        path.AddArc(arc, 270, 90);
+        arc.Y = rect.Bottom - diameter;
+        path.AddArc(arc, 0, 90);
+        arc.X = rect.Left;
+        path.AddArc(arc, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
+}
+
+internal sealed class RoundedPanel : Panel
+{
+    public int CornerRadius { get; set; } = 16;
+    public Color BorderColor { get; set; } = Color.Transparent;
+    public int BorderThickness { get; set; }
+
+    public RoundedPanel()
+    {
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        var rect = ClientRectangle;
+        rect.Width -= 1;
+        rect.Height -= 1;
+
+        using var path = CreateRoundPath(rect, CornerRadius);
+        using var brush = new SolidBrush(BackColor);
+        e.Graphics.FillPath(brush, path);
+
+        if (BorderThickness > 0)
+        {
+            using var pen = new Pen(BorderColor, BorderThickness);
+            e.Graphics.DrawPath(pen, path);
+        }
+    }
+
+    protected override void OnResize(EventArgs eventargs)
+    {
+        base.OnResize(eventargs);
+        if (Width <= 0 || Height <= 0)
+            return;
+
+        var rect = ClientRectangle;
+        using var path = CreateRoundPath(rect, CornerRadius);
+        Region = new Region(path);
+    }
+
+    private static GraphicsPath CreateRoundPath(Rectangle rect, int radius)
+    {
+        var path = new GraphicsPath();
+        int diameter = Math.Min(radius * 2, Math.Min(rect.Width, rect.Height));
+        var arc = new Rectangle(rect.Location, new Size(diameter, diameter));
+
+        path.AddArc(arc, 180, 90);
+        arc.X = rect.Right - diameter;
+        path.AddArc(arc, 270, 90);
+        arc.Y = rect.Bottom - diameter;
+        path.AddArc(arc, 0, 90);
+        arc.X = rect.Left;
+        path.AddArc(arc, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
 }
