@@ -1,0 +1,16 @@
+# Visual Studio / .NET build output
+.vs/
+bin/
+obj/
+
+# User-local IDE files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build and test artifacts
+TestResults/
+*.nupkg
+*.log
+
