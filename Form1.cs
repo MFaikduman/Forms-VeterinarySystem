@@ -1,6 +1,6 @@
 namespace VeterinerSistemi;
 
-public class Form1 : Form
+public partial class Form1 : Form
 {
     private static readonly Color AppBack = Color.FromArgb(238, 242, 247);
     private static readonly Color Surface = Color.FromArgb(248, 252, 255);
@@ -34,14 +34,7 @@ public class Form1 : Form
 
     public Form1()
     {
-        Text = "Veteriner Klinik Sistemi";
-        Width = 1080;
-        Height = 720;
-        MinimumSize = new Size(1040, 690);
-        StartPosition = FormStartPosition.CenterScreen;
-        BackColor = Color.White;
-        DoubleBuffered = true;
-        Font = new Font("Segoe UI", 9f);
+        InitializeComponent();
         LoadBackgroundImage();
         BuildUi();
         UpdateActionState();
